@@ -1,0 +1,60 @@
+要点
+TCPプロトコル
+operation == 1: 新規チャットの作成
+operation == 2: 既存チャットへの新規参加以来
+
+state == 0: リクエスト。特にクライアントからの新規チャット作成依頼に使用
+state == 1: status code reply value is decimal：リクエストがいけたかどうかのコード
+state == 2: サーバからの完了応答トークンを割り当てる
+
+手順：
+サーバは非ブロッキングで待ち受ける
+
+case1: クライアントから新規チャット作成リクエスト
+・サーバは、stateを1にし、ステータスコードを含むペイロードで即座に返信
+・チャット名がまだ存在しない場合、stateを2にし、トークン文字列と作成したチャットメッセージをpayloadに含めて送信（チャットが存在する場合）
+
+case2: クライアントからのチャット新規参加リクエスト
+・サーバは、stateを1にし、ステータスコードを含むペイロードで即座に返信
+・チャット名が存在する場合、stateを2にしてトークン文字列を生成し、チャット配列にユーザを追加
+
+
+UDPプロトコル
+coming soon...
+
+参考コード:
+import asyncio
+import socket
+
+async def handle_tcp_client(reader, writer):
+    data = await reader.read(100)
+    message = data.decode()
+    addr = writer.get_extra_info('peername')
+    print(f"Received {message} from {addr}")
+    writer.close()
+
+async def run_udp_server():
+    while True:
+        data, addr = await loop.sock_recvfrom(udp_sock, 1024)
+        print(f"Received {data.decode()} from {addr}")
+
+async def main():
+    server = await asyncio.start_server(
+        handle_tcp_client, '127.0.0.1', 8888)
+
+    addr = server.sockets[0].getsockname()
+    print(f'Serving TCP on {addr}')
+
+    global udp_sock
+    udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_sock.bind(('127.0.0.1', 9999))
+    loop.create_task(run_udp_server())
+
+    addr = udp_sock.getsockname()
+    print(f'Serving UDP on {addr}')
+
+    async with server:
+        await server.serve_forever()
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
