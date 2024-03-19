@@ -25,13 +25,9 @@ import asyncio
 data_unit = 4096
 token_bytes_len = 5
 server_address = '0.0.0.0'
-TCP_PORT = 9001
-UDP_PORT = 9002
-sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 def create_token():
-    return secrets.token_bytes(token_bytes_len)
+    return secrets.token_hex(token_bytes_len)
 
 def exist_chat(chatroom_tokens, chat_name):
     return chat_name in chatroom_tokens
@@ -44,11 +40,6 @@ def create_ip_and_hash(ip):
 
 
 
-def announce_by_udp(chatroom_tokens, packet, chat_name):
-    if exist_chat(chat_name):
-        for ip in chatroom_tokens[chat_name]:
-            sock_udp.sendto((ip, packet))
-
 # def announce_by_tcp(msg_bytes):
 
 # ユーザが所属するかどうかを確認し、ホストとして所属する場合チャットルーム事削除その際、削除メッセージを送信して、ホストでなければそのユーザだけ削除する
@@ -58,12 +49,27 @@ def delete_user(ip):
 def read_processed_data(data):
     chat_name_len = int.from_bytes(data[:1], "big")
     operation_code = int.from_bytes(data[1:2], "big")
-    state_code = int.from_bytes(data[2:3, "big"])
+    state_code = int.from_bytes(data[2:3], "big")
 
-    chat_name = data[3:chat_name_len].decode('utf-8')
+    chat_name = data[3:3+chat_name_len].decode('utf-8')
     user_name = data[3+chat_name_len:].decode('utf-8')
+    print(f"chat_name_len is: {chat_name_len} this information is from tool-module")
+    print(f"chat_name is: {chat_name} this information is from tool-module")
     
     return operation_code, state_code, chat_name, user_name
+
+def read_udp_data(data):
+    roomname_len = int.from_bytes(data[:1], "big")
+    token_len = int.from_bytes(data[1:2], "big")
+
+    roomname = data[2:2+roomname_len].decode("utf-8")
+    print(f"rooomname: {roomname}")
+    token = data[2+roomname_len:2+roomname_len+token_len].decode("utf-8")
+    print(f"token: {token}")
+    message = data[2+roomname_len+token_len:].decode("utf-8")
+    print(f"message: {message}")
+
+    return roomname, token, message
 
 def process_tcp_data(rn_size, ope, state, payloads):
     rn_size_bytes = rn_size.to_bytes(1, "big")
@@ -73,4 +79,28 @@ def process_tcp_data(rn_size, ope, state, payloads):
 
     return rn_size_bytes + ope_bytes + state_byes + payloads_bytes
 
+def process_udp_data(chat_name, message):
+    chat_name_len_bytes = len(chat_name).to_bytes(1, "big")
+    chat_name_bytes = chat_name.encode('utf-8')
+    message_bytes = message.encode('utf-8')
+
+    return chat_name_len_bytes + chat_name_bytes + message_bytes
+
+def process_client_udp(chat_name, token, message):
+    chat_name_len_bytes = len(chat_name).to_bytes(1, "big")
+    token_len = len(token).to_bytes(1, "big")
+    chat_name_bytes = chat_name.encode('utf-8')
+    token_bytes = token.encode('utf-8')
+    message_bytes = message.encode('utf-8')
+
+    return chat_name_len_bytes+token_len+chat_name_bytes+token_bytes+message_bytes
+
+# クライアント側でtokenを受け取ること, tokenの受け取りとか同期できていない
+def read_client_tcp(data):
+    message_len = int.from_bytes(data[:1], "big")
+    message = data[3:3+message_len].decode('utf-8')
+    token = data[3+message_len:].decode('utf-8')
+
+    return message, token
+ 
 

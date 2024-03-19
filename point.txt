@@ -19,8 +19,26 @@ case2: クライアントからのチャット新規参加リクエスト
 ・チャット名が存在する場合、stateを2にしてトークン文字列を生成し、チャット配列にユーザを追加
 
 
+★★★ここから★★★
 UDPプロトコル
-coming soon...
+メッセージの送信リクエストをクライアントから受け取る
+形式：⇒room_size+token_size+payloads
+
+
+★★★★クライアントのフロー★★★★
+チャットの新規作成⇒サーバへ依頼をTCPパケットで送信
+カスタムTCP⇒ | ChatNameLength: 1byte | Operation: 1byte | State: 1byte | Payload: 29byte |
+Operationは1stateは常に0
+サーバの応答が一定時間内場合、チャット作成に失敗したとメッセージを表示する
+リクエストが受領された場合応答コードが来るのでそれを表示
+完了したらそれも表示
+
+チャットの新規参加⇒上と同様
+
+チャットでのメッセージ依頼⇒サーバへ依頼とメッセージペイロードをUDPパケットで送信
+カスタムUDP⇒ | ChatNameLength: 1byte | TokenLength: 1byte | Payload: 30byte |
+サーバ側から一定時間応答がなければリクエストが失敗したメッセージを表示
+サーバ側から応答があれば、その旨を表示
 
 参考コード:
 import asyncio
@@ -58,3 +76,25 @@ async def main():
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
+
+疑問点：⇒ayncioのPythonドキュメントを確認すること
+・asyncioオブジェクトについて
+・asyncio.start_serverではどのような処理が走っている？
+・asyncio.get_event_loop()とは？
+・loop.create_taskにudpタスクを追加することで
+　内部でloopオブジェクトを通してudpパケット値としての
+　値を取得できるのか？
+・asyncio.open_connectionとは何か
+
+残タスク：server側のudpを書いて、必要最低限のクライアントを
+　　　　　実装して動確
+　　　　　クライアントのリファクタリングをして動確して完了
+
+        operation = 0or1で分けること
+
+
+
+
+現時点での問題：
+serverが正常に起動していない
+asyncio.runに変えてから動作していない
