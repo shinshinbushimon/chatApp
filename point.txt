@@ -94,7 +94,4 @@ loop.run_until_complete(main())
 
 
 
-
-現時点での問題：
-serverが正常に起動していない
-asyncio.runに変えてから動作していない
+残タスク：client側のUDPソケットを非ブロッキングで利用に改修して登録後のメンバーがメッセージを閲覧したりできるように

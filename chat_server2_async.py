@@ -42,13 +42,13 @@ class UdpServerProtocol(asyncio.DatagramProtocol):
         self.transport.sendto(data, addr)
         print(f"Recyved data from {addr} by udp")
         chat_name, token, msg = read_udp_data(data)
-        target_user = find_username(token, addr, chat_name)
+        target_user = find_username(token, addr[0], chat_name)
         print(f"Recieved following message from {addr} msg: {msg}")
         if target_user:
             send_data = process_udp_data(chat_name, f"message from {target_user} msg: {msg}")
 
             for members_info in chatroom_tokens[chat_name]:
-                self.transport.sendto(send_data, (members_info['IP'], UDP_PORT)) # クライアント側でも同じポートを指定
+                self.transport.sendto(send_data, members_info['IP'] ) # クライアント側でも同じポートを指定
             print('message was sent to all sucessfully!')
         
         else:
@@ -67,11 +67,14 @@ def create_user_info(user_name, client_ip):
 
 def find_username(token, client_ip, chat_name):
     if chat_name in chatroom_tokens and chatroom_tokens[chat_name]:
+        print("clear exist Chat token")
         chat_members_info = chatroom_tokens[chat_name]
         for memberinfo in chat_members_info:
-            if memberinfo['IP'] == client_ip and memberinfo['hash_token'] == token:
+            print(memberinfo)
+            if memberinfo['IP'][0] == client_ip and memberinfo['hash_token'] == token:
+                print(f"This user: {memberinfo['username']}")
                 return memberinfo['username']
-    
+    print("Nothing Return!!")
     return None
 
 
@@ -86,6 +89,7 @@ def create_new_chat(chat_name, user_name, client_ip):
 def add_user_to_chat(chat_name, user_name, client_ip):
     print(f"create new {chat_name} chat!! {user_name} is host user. this message is from add_user_to_chat")
     chatroom_tokens[chat_name].append(create_user_info(user_name, client_ip))
+    print(f"current members: {chatroom_tokens[chat_name]}")
     return f"The chatroom you requested already exist So, You are'nt the host."
 
 async def operate_tcp_server(reader, writer):
